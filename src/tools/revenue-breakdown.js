@@ -30,12 +30,18 @@ export async function handler({ start_date, end_date, breakdown_by }) {
   if (breakdown_by === 'unit') {
     const units = calculatePerUnitMetrics(reservations, listings, sd, ed);
     units.sort((a, b) => b.totalRevenue - a.totalRevenue);
-    data = units.map(u => ({
-      listing_name: u.listingName,
-      revenue: u.totalRevenue,
-      booked_nights: u.bookedNights,
-      adr: u.adr,
-    }));
+    data = units.map(u => {
+      const entry = {
+        listing_name: u.listingName,
+        revenue: u.totalRevenue,
+        booked_nights: u.bookedNights,
+        adr: u.adr,
+      };
+      if (u.multiRoomWarning) {
+        entry.note = 'This listing appears to have multiple bookable rooms. Metrics are aggregated — per-room values would be lower.';
+      }
+      return entry;
+    });
   } else if (breakdown_by === 'channel') {
     const channels = {};
     for (const r of reservations) {

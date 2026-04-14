@@ -40,16 +40,22 @@ export async function handler({ start_date, end_date, sort_by = 'revpar', limit 
 
   if (limit) units = units.slice(0, limit);
 
-  const formatted = units.map(u => ({
-    listing_id: u.listingId,
-    listing_name: u.listingName,
-    total_revenue: u.totalRevenue,
-    booked_nights: u.bookedNights,
-    available_nights: u.availableNights,
-    occupancy_rate: `${u.occupancyRate}%`,
-    adr: u.adr,
-    revpar: u.revpar,
-  }));
+  const formatted = units.map(u => {
+    const entry = {
+      listing_id: u.listingId,
+      listing_name: u.listingName,
+      total_revenue: u.totalRevenue,
+      booked_nights: u.bookedNights,
+      available_nights: u.availableNights,
+      occupancy_rate: `${u.occupancyRate}%`,
+      adr: u.adr,
+      revpar: u.revpar,
+    };
+    if (u.multiRoomWarning) {
+      entry.note = 'This listing appears to have multiple bookable rooms. Metrics are aggregated — per-room values would be lower.';
+    }
+    return entry;
+  });
 
   return {
     content: [{

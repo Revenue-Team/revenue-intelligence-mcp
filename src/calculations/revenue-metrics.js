@@ -60,6 +60,7 @@ export function calculatePerUnitMetrics(reservations, listings, startDate, endDa
       occupancyRate: metrics.occupancyRate,
       adr: metrics.adr,
       revpar: metrics.revpar,
+      multiRoomWarning: metrics.occupancyRate > 100,
     };
   });
 }

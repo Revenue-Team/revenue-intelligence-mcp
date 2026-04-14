@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { getListings, getReservations } from '../pms/hostaway.js';
-import { calculateMetrics } from '../calculations/revenue-metrics.js';
+import { calculateMetrics, calculatePerUnitMetrics } from '../calculations/revenue-metrics.js';
 import { startOfMonth, today } from '../utils/date-helpers.js';
 
 export const name = 'get_portfolio_overview';
@@ -26,19 +26,29 @@ export async function handler({ start_date, end_date }) {
 
   const metrics = calculateMetrics(reservations, listings, sd, ed);
 
+  const multiRoomListings = calculatePerUnitMetrics(reservations, listings, sd, ed)
+    .filter(u => u.multiRoomWarning)
+    .map(u => u.listingName);
+
+  const result = {
+    period: `${sd} to ${ed}`,
+    total_listings: listings.length,
+    total_revenue: metrics.totalRevenue,
+    total_booked_nights: metrics.bookedNights,
+    available_room_nights: metrics.availableRoomNights,
+    occupancy_rate: `${metrics.occupancyRate}%`,
+    adr: metrics.adr,
+    revpar: metrics.revpar,
+  };
+
+  if (multiRoomListings.length > 0) {
+    result.multi_room_note = `${multiRoomListings.length} listing(s) appear to have multiple bookable rooms, which inflates aggregated metrics: ${multiRoomListings.join(', ')}`;
+  }
+
   return {
     content: [{
       type: 'text',
-      text: JSON.stringify({
-        period: `${sd} to ${ed}`,
-        total_listings: listings.length,
-        total_revenue: metrics.totalRevenue,
-        total_booked_nights: metrics.bookedNights,
-        available_room_nights: metrics.availableRoomNights,
-        occupancy_rate: `${metrics.occupancyRate}%`,
-        adr: metrics.adr,
-        revpar: metrics.revpar,
-      }, null, 2),
+      text: JSON.stringify(result, null, 2),
     }],
   };
 }

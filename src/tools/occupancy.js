@@ -61,6 +61,9 @@ export async function handler({ start_date, end_date, listing_id, group_by = 'mo
 
   const intervals = generateIntervals(sd, ed, group_by);
 
+  const overallMetrics = calculateMetrics(reservations, filteredListings, sd, ed);
+  const isMultiRoom = overallMetrics.occupancyRate > 100;
+
   const data = intervals.map(interval => {
     const metrics = calculateMetrics(reservations, filteredListings, interval.start, interval.end);
     return {
@@ -71,15 +74,21 @@ export async function handler({ start_date, end_date, listing_id, group_by = 'mo
     };
   });
 
+  const result = {
+    date_range: `${sd} to ${ed}`,
+    grouped_by: group_by,
+    listing: listing_id || 'all',
+    data,
+  };
+
+  if (isMultiRoom) {
+    result.note = 'This listing appears to have multiple bookable rooms. Occupancy exceeds 100% because metrics are aggregated across all rooms.';
+  }
+
   return {
     content: [{
       type: 'text',
-      text: JSON.stringify({
-        date_range: `${sd} to ${ed}`,
-        grouped_by: group_by,
-        listing: listing_id || 'all',
-        data,
-      }, null, 2),
+      text: JSON.stringify(result, null, 2),
     }],
   };
 }
