@@ -1,0 +1,15 @@
+{
+  "name": "revenue-intelligence-mcp",
+  "version": "1.0.0",
+  "description": "Revenue intelligence MCP server for short-term rental PMS systems",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "test": "node --test src/**/*.test.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "zod": "^4.3.6"
+  }
+}
