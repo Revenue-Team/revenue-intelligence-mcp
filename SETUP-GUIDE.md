@@ -51,8 +51,8 @@ Open your terminal and run:
 
 ```bash
 # Clone the project (or download and unzip)
-git clone https://github.com/arbio/revenue-intelligence-mcp.git
-cd revenue-intelligence-mcp
+git clone https://github.com/Revenue-Team/MCP-lead-gen.git
+cd MCP-lead-gen
 
 # Install dependencies
 npm install
@@ -97,7 +97,7 @@ Press `Ctrl+C` to stop it.
      "mcpServers": {
        "revenue-intelligence": {
          "command": "node",
-         "args": ["/full/path/to/revenue-intelligence-mcp/src/index.js"],
+         "args": ["/full/path/to/MCP-lead-gen/src/index.js"],
          "env": {
            "HOSTAWAY_CLIENT_ID": "YOUR_ACCOUNT_ID",
            "HOSTAWAY_CLIENT_SECRET": "YOUR_CLIENT_SECRET"
@@ -121,7 +121,7 @@ Add the server to your Claude Code MCP config:
 claude mcp add revenue-intelligence \
   -e HOSTAWAY_CLIENT_ID=YOUR_ACCOUNT_ID \
   -e HOSTAWAY_CLIENT_SECRET=YOUR_CLIENT_SECRET \
-  -- node /full/path/to/revenue-intelligence-mcp/src/index.js
+  -- node /full/path/to/MCP-lead-gen/src/index.js
 ```
 
 Or add it manually to `~/.claude/settings.json`:
@@ -131,7 +131,7 @@ Or add it manually to `~/.claude/settings.json`:
   "mcpServers": {
     "revenue-intelligence": {
       "command": "node",
-      "args": ["/full/path/to/revenue-intelligence-mcp/src/index.js"],
+      "args": ["/full/path/to/MCP-lead-gen/src/index.js"],
       "env": {
         "HOSTAWAY_CLIENT_ID": "YOUR_ACCOUNT_ID",
         "HOSTAWAY_CLIENT_SECRET": "YOUR_CLIENT_SECRET"
