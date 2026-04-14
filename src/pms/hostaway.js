@@ -39,14 +39,14 @@ async function getAccessToken() {
   return cachedToken;
 }
 
-// --- Rate limiter: max 1 request per second ---
+// --- Rate limiter: stay under Hostaway's 15 req / 10 sec limit ---
 let lastRequestTime = 0;
 
 async function throttle() {
   const now = Date.now();
   const elapsed = now - lastRequestTime;
-  if (elapsed < 1000) {
-    await new Promise(resolve => setTimeout(resolve, 1000 - elapsed));
+  if (elapsed < 700) {
+    await new Promise(resolve => setTimeout(resolve, 700 - elapsed));
   }
   lastRequestTime = Date.now();
 }
@@ -87,6 +87,10 @@ async function apiGet(path, query = {}) {
   throw new Error(`HostAway API ${path}: rate limited after 3 retries`);
 }
 
+// --- In-memory cache for listings (refreshed every 5 min) ---
+let listingsCache = null;
+let listingsCacheExpiry = 0;
+
 // --- Normalization ---
 
 function normalizeListing(raw) {
@@ -107,6 +111,7 @@ function normalizeReservation(raw) {
     listingName: raw.listingName || '',
     arrivalDate: raw.arrivalDate?.slice(0, 10) || '',
     departureDate: raw.departureDate?.slice(0, 10) || '',
+    bookingDate: raw.reservationDate?.slice(0, 10) || '',
     nights: raw.nights || 0,
     totalRevenue: raw.totalPrice || 0,
     status: raw.status === 'cancelled' ? 'cancelled' : 'confirmed',
@@ -117,10 +122,32 @@ function normalizeReservation(raw) {
 
 // --- Public interface ---
 
+/**
+ * Fetch ALL listings, with pagination. Cached for 5 minutes since listings
+ * rarely change and every tool needs them.
+ */
 export async function getListings() {
-  const data = await apiGet('/listings');
-  const results = data.result || [];
-  return results.map(normalizeListing);
+  if (listingsCache && Date.now() < listingsCacheExpiry) {
+    return listingsCache;
+  }
+
+  const allListings = [];
+  let offset = 0;
+  const limit = 200;
+
+  while (true) {
+    const data = await apiGet('/listings', { limit, offset });
+    const results = data.result || [];
+
+    allListings.push(...results);
+
+    if (results.length < limit) break;
+    offset += limit;
+  }
+
+  listingsCache = allListings.map(normalizeListing);
+  listingsCacheExpiry = Date.now() + 5 * 60 * 1000;
+  return listingsCache;
 }
 
 /**
@@ -160,29 +187,55 @@ export async function getReservations(startDate, endDate, listingId = null) {
 }
 
 /**
- * Fetch reservations including cancelled ones (for list_reservations tool).
+ * Fetch a limited number of reservations (no full pagination).
+ * Used by list_reservations to avoid fetching thousands of records
+ * when only a few are needed.
  */
-export async function getReservationsAll(startDate, endDate, listingId = null) {
-  const allReservations = [];
-  let afterId = null;
-  const limit = 100;
+export async function getReservationsPage(startDate, endDate, { listingId, limit = 25, includeCancelled = false } = {}) {
+  const query = {
+    limit,
+    sortOrder: 'desc',
+  };
+  if (startDate) query.arrivalStartDate = startDate;
+  if (endDate) query.arrivalEndDate = endDate;
+  if (listingId) query.listingId = listingId;
 
-  while (true) {
-    const query = { limit, sortOrder: 'asc' };
-    if (startDate) query.arrivalStartDate = startDate;
-    if (endDate) query.arrivalEndDate = endDate;
-    if (listingId) query.listingId = listingId;
-    if (afterId) query.afterId = afterId;
+  const data = await apiGet('/reservations', query);
+  const results = (data.result || []).map(normalizeReservation);
 
-    const data = await apiGet('/reservations', query);
-    const results = data.result || [];
+  if (includeCancelled) return results;
+  return results.filter(r => r.status !== 'cancelled');
+}
 
-    if (results.length === 0) break;
+/**
+ * Fetch reservations filtered by booking creation date.
+ *
+ * The Hostaway API has no server-side filter for reservationDate (creation date).
+ * We use modifiedFrom/modifiedTo as a server-side approximation (new bookings are
+ * always "modified" at creation), then filter client-side by the actual reservationDate.
+ */
+export async function getReservationsByBookingDate(startDate, endDate, { listingId, limit = 100, includeCancelled = false } = {}) {
+  // Fetch one page of recently modified reservations. Use a full page size (100)
+  // regardless of the caller's limit — small page sizes cause unnecessary pagination.
+  // Client-side filter narrows to actual booking creation date.
+  const query = {
+    limit: 100,
+    modifiedFrom: startDate,
+    modifiedTo: endDate,
+    sortOrder: 'desc',
+  };
+  if (listingId) query.listingId = listingId;
 
-    allReservations.push(...results);
-    afterId = results[results.length - 1].id;
-    if (results.length < limit) break;
+  const data = await apiGet('/reservations', query);
+  const results = data.result || [];
+
+  let normalized = results
+    .map(normalizeReservation)
+    .filter(r => r.bookingDate >= startDate && r.bookingDate <= endDate);
+
+  if (!includeCancelled) {
+    normalized = normalized.filter(r => r.status !== 'cancelled');
   }
 
-  return allReservations.map(normalizeReservation);
+  return normalized;
 }
