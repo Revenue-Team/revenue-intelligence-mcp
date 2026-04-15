@@ -222,14 +222,19 @@ export async function resolveListingId(idOrName) {
 export async function getReservations(startDate, endDate, listingId = null) {
   const allReservations = [];
   let afterId = null;
-  const limit = 100;
+  // Hostaway caps pagination at 500 per page. Using the max cuts round-trips
+  // dramatically for portfolios with many reservations.
+  const limit = 500;
 
   while (true) {
+    // Note: we intentionally omit sortOrder here. Hostaway rejects the
+    // combination of sortOrder + afterId pagination with a 403. Order
+    // doesn't matter for our downstream math — we collect all pages and
+    // compute by overlap/summation.
     const query = {
       limit,
       arrivalStartDate: startDate,
       arrivalEndDate: endDate,
-      sortOrder: 'asc',
       includeResources: false,
     };
     if (listingId) query.listingId = listingId;
