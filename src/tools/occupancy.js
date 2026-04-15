@@ -89,6 +89,16 @@ export async function handler({ start_date, end_date, listing_id, group_by = 'mo
     result.note = 'This listing appears to have multiple bookable rooms. Occupancy exceeds 100% because metrics are aggregated across all rooms.';
   }
 
+  result._next_steps = resolvedId
+    ? [
+        `Show recent bookings for listing ${resolvedId} between ${sd} and ${userEnd}`,
+        `What revenue did listing ${resolvedId} generate between ${sd} and ${userEnd}?`,
+      ]
+    : [
+        `Break revenue down by unit for ${sd} to ${userEnd}`,
+        `Which units are driving this occupancy?`,
+      ];
+
   return {
     content: [{
       type: 'text',

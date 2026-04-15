@@ -68,10 +68,25 @@ export async function handler({ start_date, end_date, sort_by = 'revpar', limit,
     return entry;
   });
 
+  // Context-aware next steps — reference actual top/bottom unit names when available.
+  const topUnit = formatted[0];
+  const bottomUnit = formatted[formatted.length - 1];
+  const _next_steps = [];
+  if (topUnit && bottomUnit && topUnit !== bottomUnit) {
+    _next_steps.push(`Show recent bookings for ${topUnit.listing_name}`);
+    _next_steps.push(`What's the occupancy for ${bottomUnit.listing_name} over the same period?`);
+  }
+  _next_steps.push(`Compare ${sd} to ${userEnd} vs the previous period of the same length`);
+
   return {
     content: [{
       type: 'text',
-      text: JSON.stringify({ period: `${sd} to ${userEnd}`, sorted_by: sort_by, units: formatted }, null, 2),
+      text: JSON.stringify({
+        period: `${sd} to ${userEnd}`,
+        sorted_by: sort_by,
+        units: formatted,
+        _next_steps,
+      }, null, 2),
     }],
   };
 }

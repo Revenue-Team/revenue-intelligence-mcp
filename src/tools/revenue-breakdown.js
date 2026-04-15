@@ -79,6 +79,19 @@ export async function handler({ start_date, end_date, breakdown_by }) {
     data = months;
   }
 
+  // Suggest drill-downs that complement the current breakdown dimension.
+  const alt = {
+    unit: ['channel', 'month'],
+    channel: ['unit', 'month'],
+    month: ['unit', 'channel'],
+  }[breakdown_by];
+
+  const _next_steps = [
+    `Rank units by revenue for ${sd} to ${userEnd}`,
+    `Break revenue down by ${alt[0]} for the same period`,
+    `Compare ${sd} to ${userEnd} vs the previous period of the same length`,
+  ];
+
   return {
     content: [{
       type: 'text',
@@ -86,6 +99,7 @@ export async function handler({ start_date, end_date, breakdown_by }) {
         period: `${sd} to ${userEnd}`,
         breakdown_by,
         data,
+        _next_steps,
       }, null, 2),
     }],
   };

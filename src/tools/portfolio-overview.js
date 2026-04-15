@@ -46,6 +46,12 @@ export async function handler({ start_date, end_date }) {
     result.multi_room_note = `${multiRoomListings.length} listing(s) appear to have multiple bookable rooms, which inflates aggregated metrics: ${multiRoomListings.join(', ')}`;
   }
 
+  result._next_steps = [
+    `Show me my top 5 units by revenue for ${sd} to ${userEnd}`,
+    `Compare ${sd} to ${userEnd} vs the previous period of the same length`,
+    `Break revenue down by booking channel for this period`,
+  ];
+
   return {
     content: [{
       type: 'text',

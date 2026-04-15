@@ -67,6 +67,14 @@ export async function handler({ start_date, end_date, listing_id, date_filter = 
     status: r.status,
   }));
 
+  const _next_steps = [
+    `Show a portfolio revenue overview for ${sd} to ${ed}`,
+    `Break revenue down by channel for ${sd} to ${ed}`,
+  ];
+  if (!listing_id) {
+    _next_steps.push(`Which units have the most recent bookings this week?`);
+  }
+
   return {
     content: [{
       type: 'text',
@@ -76,6 +84,7 @@ export async function handler({ start_date, end_date, listing_id, date_filter = 
         status_filter: status,
         count: formatted.length,
         reservations: formatted,
+        _next_steps,
       }, null, 2),
     }],
   };

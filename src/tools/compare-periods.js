@@ -75,6 +75,11 @@ export async function handler({ current_start, current_end, previous_start, prev
             percent: pctChange(current.revpar, previous.revpar),
           },
         },
+        _next_steps: [
+          `Rank units by revenue for ${current_start} to ${current_end}`,
+          `Break revenue down by channel for ${current_start} to ${current_end}`,
+          `Which units drove the biggest revenue change between these periods?`,
+        ],
       }, null, 2),
     }],
   };
