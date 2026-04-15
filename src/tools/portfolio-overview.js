@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { getListings, getReservations } from '../pms/hostaway.js';
 import { calculateMetrics, calculatePerUnitMetrics } from '../calculations/revenue-metrics.js';
-import { startOfMonth, today } from '../utils/date-helpers.js';
+import { startOfMonth, today, inclusiveEnd } from '../utils/date-helpers.js';
 
 export const name = 'get_portfolio_overview';
 
@@ -17,11 +17,12 @@ export const config = {
 
 export async function handler({ start_date, end_date }) {
   const sd = start_date || startOfMonth(new Date());
-  const ed = end_date || today();
+  const userEnd = end_date || today();           // user-facing (inclusive)
+  const ed = inclusiveEnd(userEnd);              // internal (exclusive) for math
 
   const [listings, reservations] = await Promise.all([
     getListings(),
-    getReservations(sd, ed),
+    getReservations(sd, userEnd),
   ]);
 
   const metrics = calculateMetrics(reservations, listings, sd, ed);
@@ -31,7 +32,7 @@ export async function handler({ start_date, end_date }) {
     .map(u => u.listingName);
 
   const result = {
-    period: `${sd} to ${ed}`,
+    period: `${sd} to ${userEnd}`,
     total_listings: listings.length,
     total_revenue: metrics.totalRevenue,
     total_booked_nights: metrics.bookedNights,

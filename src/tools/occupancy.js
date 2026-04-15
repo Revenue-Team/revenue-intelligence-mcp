@@ -1,7 +1,7 @@
 import { z } from 'zod';
-import { getListings, getReservations } from '../pms/hostaway.js';
+import { getListings, getReservations, resolveListingId } from '../pms/hostaway.js';
 import { calculateMetrics } from '../calculations/revenue-metrics.js';
-import { startOfMonth, today, formatDate } from '../utils/date-helpers.js';
+import { startOfMonth, today, formatDate, inclusiveEnd } from '../utils/date-helpers.js';
 
 export const name = 'get_occupancy';
 
@@ -11,7 +11,7 @@ export const config = {
   inputSchema: {
     start_date: z.string().describe('Start date YYYY-MM-DD').optional(),
     end_date: z.string().describe('End date YYYY-MM-DD').optional(),
-    listing_id: z.string().optional().describe('Filter to a specific unit'),
+    listing_id: z.string().optional().describe('Filter to a specific unit. Accepts either a numeric Hostaway ID or a unit name (e.g. "AT_VIE_Duschel_01_00_01_W").'),
     group_by: z.enum(['day', 'week', 'month']).default('month').describe('Group occupancy by interval'),
   },
   annotations: { readOnlyHint: true },
@@ -48,15 +48,19 @@ function generateIntervals(startDate, endDate, groupBy) {
 
 export async function handler({ start_date, end_date, listing_id, group_by = 'month' }) {
   const sd = start_date || startOfMonth(new Date());
-  const ed = end_date || today();
+  const userEnd = end_date || today();
+  const ed = inclusiveEnd(userEnd);
+
+  // Resolve numeric ID or unit name to a numeric ID before querying.
+  const resolvedId = listing_id ? await resolveListingId(listing_id) : null;
 
   const [listings, reservations] = await Promise.all([
     getListings(),
-    getReservations(sd, ed, listing_id || null),
+    getReservations(sd, userEnd, resolvedId),
   ]);
 
-  const filteredListings = listing_id
-    ? listings.filter(l => l.id === listing_id)
+  const filteredListings = resolvedId
+    ? listings.filter(l => l.id === resolvedId)
     : listings;
 
   const intervals = generateIntervals(sd, ed, group_by);
@@ -75,9 +79,9 @@ export async function handler({ start_date, end_date, listing_id, group_by = 'mo
   });
 
   const result = {
-    date_range: `${sd} to ${ed}`,
+    date_range: `${sd} to ${userEnd}`,
     grouped_by: group_by,
-    listing: listing_id || 'all',
+    listing: resolvedId || 'all',
     data,
   };
 

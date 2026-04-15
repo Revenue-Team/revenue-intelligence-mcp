@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { getListings, getReservations } from '../pms/hostaway.js';
 import { calculateMetrics } from '../calculations/revenue-metrics.js';
+import { inclusiveEnd } from '../utils/date-helpers.js';
 
 export const name = 'compare_periods';
 
@@ -26,13 +27,17 @@ function pctChange(current, previous) {
 export async function handler({ current_start, current_end, previous_start, previous_end }) {
   const listings = await getListings();
 
+  // Convert user-facing inclusive end dates to internal exclusive form for math.
+  const currentEndExclusive = inclusiveEnd(current_end);
+  const previousEndExclusive = inclusiveEnd(previous_end);
+
   const [currentRes, previousRes] = await Promise.all([
     getReservations(current_start, current_end),
     getReservations(previous_start, previous_end),
   ]);
 
-  const current = calculateMetrics(currentRes, listings, current_start, current_end);
-  const previous = calculateMetrics(previousRes, listings, previous_start, previous_end);
+  const current = calculateMetrics(currentRes, listings, current_start, currentEndExclusive);
+  const previous = calculateMetrics(previousRes, listings, previous_start, previousEndExclusive);
 
   return {
     content: [{

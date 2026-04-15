@@ -51,3 +51,18 @@ export function endOfMonth(date) {
 export function today() {
   return formatDate(new Date());
 }
+
+/**
+ * Convert a user-facing inclusive end date to the internal exclusive form
+ * by adding 1 day. The internal math (calculateMetrics, overlapNights, etc.)
+ * treats range_end as exclusive — matching how reservations work where
+ * `departureDate` is the day the guest checks out, not a night they occupy.
+ *
+ * Tool handlers should call this on user-supplied end_date so that
+ * "April 13 to April 13" naturally means "the night of April 13" (1 night).
+ */
+export function inclusiveEnd(dateStr) {
+  const d = new Date(dateStr + 'T00:00:00Z');
+  d.setUTCDate(d.getUTCDate() + 1);
+  return formatDate(d);
+}

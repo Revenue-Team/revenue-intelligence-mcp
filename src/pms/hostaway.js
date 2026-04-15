@@ -64,9 +64,26 @@ async function apiGet(path, query = {}) {
   }
 
   for (let attempt = 0; attempt < 3; attempt++) {
-    const res = await fetch(url, {
-      headers: { Authorization: `Bearer ${token}`, 'Cache-Control': 'no-cache' },
-    });
+    // Abort the request if it hangs longer than 60s. Without this, cancelled
+    // MCP requests leave fetch() running in the background, and a delayed
+    // response with a huge payload can OOM the Node process.
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 60_000);
+
+    let res;
+    try {
+      res = await fetch(url, {
+        headers: { Authorization: `Bearer ${token}`, 'Cache-Control': 'no-cache' },
+        signal: controller.signal,
+      });
+    } catch (err) {
+      clearTimeout(timeoutId);
+      if (err.name === 'AbortError') {
+        throw new Error(`HostAway API ${path} timed out after 60s`);
+      }
+      throw err;
+    }
+    clearTimeout(timeoutId);
 
     if (res.status === 429) {
       const waitSec = Math.pow(2, attempt + 1);
@@ -97,6 +114,9 @@ function normalizeListing(raw) {
   return {
     id: String(raw.id),
     name: raw.name || '',
+    // Internal naming code (e.g. "AT_VIE_Duschel_01_00_01_W"). Reservations
+    // report this as listingName, so we keep it separately for ID lookups.
+    internalName: raw.internalListingName || '',
     address: [raw.address, raw.city, raw.country].filter(Boolean).join(', '),
     bedrooms: raw.bedrooms ?? 0,
     maxGuests: raw.maxGuests ?? 0,
@@ -151,6 +171,50 @@ export async function getListings() {
 }
 
 /**
+ * Resolve a user-supplied listing identifier to a numeric Hostaway listing ID.
+ * Accepts either a numeric ID (returned as-is) or a unit name (looked up in
+ * the cached listings, case-insensitive exact match).
+ *
+ * Throws a clear error if the name cannot be resolved.
+ *
+ * @param {string} idOrName — numeric ID or unit name
+ * @returns {Promise<string>} numeric listing ID
+ */
+export async function resolveListingId(idOrName) {
+  if (idOrName == null || idOrName === '') return null;
+
+  // Numeric (or numeric-string) IDs pass through unchanged.
+  if (/^\d+$/.test(String(idOrName))) return String(idOrName);
+
+  // Otherwise treat as a name and resolve via cached listings.
+  // Match against either the user-facing name or the internal naming code,
+  // since reservations and listings use different name fields.
+  const listings = await getListings();
+  const target = String(idOrName).toLowerCase();
+  const match = listings.find(l =>
+    l.name.toLowerCase() === target ||
+    l.internalName.toLowerCase() === target
+  );
+
+  if (match) return match.id;
+
+  // Suggest near-matches so the user gets a useful error.
+  const suggestions = listings
+    .filter(l => {
+      const internal = l.internalName.toLowerCase();
+      const friendly = l.name.toLowerCase();
+      const prefix = target.slice(0, 6);
+      return internal.includes(prefix) || friendly.includes(prefix);
+    })
+    .slice(0, 5)
+    .map(l => l.internalName || l.name);
+  const hint = suggestions.length
+    ? ` Did you mean: ${suggestions.join(', ')}?`
+    : '';
+  throw new Error(`Listing "${idOrName}" not found.${hint}`);
+}
+
+/**
  * Fetch all reservations for a date range. Paginates using afterId.
  * Optionally filter to a single listing.
  * Returns all non-cancelled reservations by default.
@@ -166,6 +230,7 @@ export async function getReservations(startDate, endDate, listingId = null) {
       arrivalStartDate: startDate,
       arrivalEndDate: endDate,
       sortOrder: 'asc',
+      includeResources: false,
     };
     if (listingId) query.listingId = listingId;
     if (afterId) query.afterId = afterId;
@@ -195,6 +260,7 @@ export async function getReservationsPage(startDate, endDate, { listingId, limit
   const query = {
     limit,
     sortOrder: 'desc',
+    includeResources: false,
   };
   if (startDate) query.arrivalStartDate = startDate;
   if (endDate) query.arrivalEndDate = endDate;
@@ -223,6 +289,7 @@ export async function getReservationsByBookingDate(startDate, endDate, { listing
     modifiedFrom: startDate,
     modifiedTo: endDate,
     sortOrder: 'desc',
+    includeResources: false,
   };
   if (listingId) query.listingId = listingId;
 

@@ -1,137 +1,107 @@
-# Connect Hostaway to Claude for Revenue Intelligence
+# Connect Hostaway to Claude Desktop
 
-Get real-time revenue analytics from your Hostaway account directly in Claude. Ask questions like "What's my RevPAR this month?" or "Which unit is underperforming?" and get instant answers from your own data.
+Get real-time revenue analytics from your Hostaway account directly inside Claude. Ask "What's my RevPAR this month?" or "Which unit is underperforming?" and get instant answers from your live data.
 
-**What you'll get:** 6 revenue intelligence tools that compute occupancy rates, ADR, RevPAR, period comparisons, and more — all from your live Hostaway data.
+**What you get:** 6 tools that compute occupancy, ADR, RevPAR, period comparisons, channel breakdowns, and more — all on demand from your Hostaway account.
 
-**Time to set up:** ~10 minutes
-
-**Requirements:** Node.js 18+, a Hostaway account with API access, Claude Desktop or Claude Code
-
----
-
-## Step 1: Install Claude
-
-If you don't already have Claude Desktop or Claude Code installed:
-
-**Claude Desktop (recommended for most users)**
-- Download from [claude.ai/download](https://claude.ai/download)
-- Install and sign in with your Anthropic account
-
-**Claude Code (for developers who prefer the terminal)**
-```bash
-npm install -g @anthropic-ai/claude-code
-```
+**Time to set up:** about 10 minutes
+**Skill needed:** ability to copy/paste into a config file
 
 ---
 
-## Step 2: Get your Hostaway API credentials
+## Before you start
 
-You need two things from your Hostaway dashboard: your **Account ID** and an **API Secret**.
+You need:
 
-1. Log in to your [Hostaway Dashboard](https://dashboard.hostaway.com)
-2. Go to **Settings** > **API** (or navigate to the API credentials section)
-3. Note your **Account ID** (a numeric ID, e.g. `41334`)
+- **Claude Desktop** — download from [claude.ai/download](https://claude.ai/download)
+- **A Hostaway account** with API access enabled
+- **Node.js 18 or newer** — download from [nodejs.org](https://nodejs.org) if you don't have it
+
+> If you also use Claude Code (the developer CLI), the same instructions work there with a different config file. This guide covers Claude Desktop.
+
+---
+
+## Step 1 — Get your Hostaway API credentials
+
+You need two values from your Hostaway dashboard:
+
+1. Log in to [dashboard.hostaway.com](https://dashboard.hostaway.com)
+2. Go to **Settings → API**
+3. Note your **Account ID** (a number, e.g. `41334`)
 4. Generate or copy your **Client Secret** (a long alphanumeric string)
-
-You'll need these values:
 
 | Credential | Where to find it | Example |
 |---|---|---|
-| Account ID | Dashboard > Settings > API | `41334` |
-| Client Secret | Dashboard > Settings > API | `3febfd5e8f4...` |
+| Account ID | Settings → API | `41334` |
+| Client Secret | Settings → API | `3febfd5e8f4cc609...` |
 
-> **Note:** Your Account ID is also used as the Client ID for Hostaway's OAuth2 flow.
+Keep these handy — you'll paste them into the config in Step 3.
 
 ---
 
-## Step 3: Download and install the MCP server
+## Step 2 — Download the server
 
-Open your terminal and run:
+Open **Terminal** (macOS) or **PowerShell** (Windows) and run:
 
 ```bash
-# Clone the project (or download and unzip)
-git clone https://github.com/Revenue-Team/MCP-lead-gen.git
-cd MCP-lead-gen
-
-# Install dependencies
+git clone https://github.com/Revenue-Team/revenue-intelligence-mcp.git
+cd revenue-intelligence-mcp
 npm install
 ```
 
-That's it. No build step needed — the server runs directly with Node.js.
+This downloads the project and installs its dependencies. No build step is needed.
 
-### Verify the install
+Note the **full path** to the project — you'll need it in the next step. To get it:
 
+**macOS / Linux:**
 ```bash
-node src/index.js 2>&1 | head -1
+pwd
 ```
 
-You should see: `Revenue Intelligence MCP server running on stdio`
+**Windows:**
+```powershell
+echo %CD%
+```
 
-Press `Ctrl+C` to stop it.
+Copy the path that's printed — it'll look something like `/Users/yourname/revenue-intelligence-mcp`.
 
 ---
 
-## Step 4: Connect to Claude
+## Step 3 — Open the Claude Desktop config file
 
-### Option A: Claude Desktop
-
-1. Open your Claude Desktop config file:
-
-   **macOS:**
-   ```bash
-   open ~/Library/Application\ Support/Claude/claude_desktop_config.json
-   ```
-
-   **Windows:**
-   ```
-   %APPDATA%\Claude\claude_desktop_config.json
-   ```
-
-   If the file doesn't exist, create it.
-
-2. Add the revenue-intelligence server. Replace the placeholder values with your real credentials and the actual path to where you downloaded the project:
-
-   ```json
-   {
-     "mcpServers": {
-       "revenue-intelligence": {
-         "command": "node",
-         "args": ["/full/path/to/MCP-lead-gen/src/index.js"],
-         "env": {
-           "HOSTAWAY_CLIENT_ID": "YOUR_ACCOUNT_ID",
-           "HOSTAWAY_CLIENT_SECRET": "YOUR_CLIENT_SECRET"
-         }
-       }
-     }
-   }
-   ```
-
-   > **Important:** Replace `/full/path/to/revenue-intelligence-mcp` with the actual path. For example: `/Users/yourname/revenue-intelligence-mcp`
-
-3. Restart Claude Desktop completely (quit and reopen, not just close the window)
-
-4. You should see a hammer icon in the bottom-right of the chat input — click it to verify the 6 revenue tools are listed
-
-### Option B: Claude Code
-
-Add the server to your Claude Code MCP config:
-
+**macOS:**
 ```bash
-claude mcp add revenue-intelligence \
-  -e HOSTAWAY_CLIENT_ID=YOUR_ACCOUNT_ID \
-  -e HOSTAWAY_CLIENT_SECRET=YOUR_CLIENT_SECRET \
-  -- node /full/path/to/MCP-lead-gen/src/index.js
+open -e ~/Library/Application\ Support/Claude/claude_desktop_config.json
 ```
 
-Or add it manually to `~/.claude/settings.json`:
+**Windows:**
+```powershell
+notepad %APPDATA%\Claude\claude_desktop_config.json
+```
+
+If the file doesn't exist yet, create it with this empty starting content:
+
+```json
+{
+  "mcpServers": {}
+}
+```
+
+---
+
+## Step 4 — Add the revenue-intelligence server
+
+Inside `mcpServers`, add the following block. Replace the three placeholder values:
+
+- `/FULL/PATH/TO/revenue-intelligence-mcp` — the path you copied in Step 2
+- `YOUR_ACCOUNT_ID` and `YOUR_CLIENT_SECRET` — your Hostaway credentials from Step 1
 
 ```json
 {
   "mcpServers": {
     "revenue-intelligence": {
       "command": "node",
-      "args": ["/full/path/to/MCP-lead-gen/src/index.js"],
+      "args": ["/FULL/PATH/TO/revenue-intelligence-mcp/src/index.js"],
       "env": {
         "HOSTAWAY_CLIENT_ID": "YOUR_ACCOUNT_ID",
         "HOSTAWAY_CLIENT_SECRET": "YOUR_CLIENT_SECRET"
@@ -141,121 +111,126 @@ Or add it manually to `~/.claude/settings.json`:
 }
 ```
 
+Save the file.
+
+> If you have a large portfolio (500+ units), add this line inside the `env` block to give the server more memory:
+> ```json
+> "NODE_OPTIONS": "--max-old-space-size=8192"
+> ```
+
 ---
 
-## Step 5: Start asking questions
+## Step 5 — Restart Claude Desktop
 
-Once connected, just chat with Claude naturally. Here are some things you can ask:
+Quit Claude Desktop completely (**Cmd+Q** on macOS, or close from the system tray on Windows — not just the window) and reopen it.
 
-### Portfolio overview
-> "What's my portfolio overview for this month?"
->
-> "Give me a revenue summary for Q1 2026"
+---
 
-### Unit performance
-> "Which unit has the highest RevPAR this month?"
->
-> "Rank my bottom 5 units by occupancy"
->
-> "What's the ADR for my Berlin properties?"
+## Step 6 — Verify it's working
 
-### Occupancy analysis
-> "What's my occupancy rate for last month?"
->
-> "Show me daily occupancy for unit X this week"
+In a new chat, click the **tools icon** (next to the chat input). You should see `revenue-intelligence` listed with 6 tools available.
 
-### Revenue breakdown
-> "Break down my revenue by booking channel"
->
-> "How much revenue came from Airbnb vs Booking.com this month?"
->
-> "Show me revenue by unit for March"
+Then run this quick test:
 
-### Period comparison
-> "Compare this month vs last month"
->
-> "How does April compare to March in terms of RevPAR and occupancy?"
+> Show me my last 5 reservations
 
-### Reservation details
-> "Show me all reservations arriving this week"
+You should get a clean list back in 15–30 seconds. If you do, you're connected.
+
+---
+
+## How to use it
+
+Just chat with Claude in plain English. Examples:
+
+**Portfolio overview**
+> What's my portfolio overview for this month?
 >
-> "List cancelled reservations for last month"
+> Give me a revenue summary for the last 7 days
+
+**Per-unit performance**
+> Which unit had the highest RevPAR last week?
+>
+> Rank my bottom 5 units by occupancy this month
+>
+> What's the RevPAR for unit AT_VIE_Duschel_01_00_01_W on April 13?
+
+**Occupancy**
+> Show me daily occupancy for last week
+>
+> What was occupancy for unit DE_HAM_Makro_01_02_04_B last month?
+
+**Revenue breakdown**
+> Break down revenue by booking channel this month
+>
+> Show revenue per unit for March
+
+**Compare periods**
+> Compare this month vs last month
+>
+> How does Q1 2026 compare to Q4 2025 in RevPAR?
+
+**Reservation details**
+> List all reservations arriving next week
+>
+> Show me cancelled bookings from last month
+
+You can refer to a unit by its **internal name** (e.g. `AT_VIE_Duschel_01_00_01_W`) or by its **numeric Hostaway ID**. Both work.
 
 ---
 
 ## What the tools compute
 
-The server calculates these metrics on the fly from your Hostaway data:
-
 | Metric | Formula | What it tells you |
 |---|---|---|
-| **Occupancy Rate** | Booked Nights / Available Room Nights x 100 | How full your portfolio is |
-| **ADR** (Average Daily Rate) | Total Revenue / Booked Nights | Average price per occupied night |
-| **RevPAR** (Revenue Per Available Room) | Total Revenue / Available Room Nights | Revenue efficiency across all nights (occupied or not) |
+| Occupancy Rate | Booked Nights / Available Room Nights × 100 | How full your portfolio is |
+| ADR (Average Daily Rate) | Total Revenue / Booked Nights | Average price per occupied night |
+| RevPAR (Revenue Per Available Room) | Total Revenue / Available Room Nights | Revenue per night across all units (occupied or not) |
 
-For reservations that partially overlap your selected date range, revenue and nights are automatically prorated — so you always get accurate numbers for the exact period you're asking about.
-
----
-
-## Available tools reference
-
-| Tool | What it does |
-|---|---|
-| `get_portfolio_overview` | High-level KPIs across your whole portfolio for a date range |
-| `get_unit_performance` | Per-unit metrics, ranked by RevPAR, ADR, occupancy, or revenue |
-| `get_occupancy` | Occupancy rates grouped by day, week, or month |
-| `get_revenue_breakdown` | Revenue split by unit, by month, or by booking channel |
-| `compare_periods` | Side-by-side comparison of two date ranges with absolute and percentage changes |
-| `list_reservations` | Raw reservation data with filters (dates, unit, status) |
+For reservations that overlap your selected date range, revenue and nights are automatically prorated for accuracy.
 
 ---
 
-## Tips and things to know
+## Limitations to know about
 
-- **First request may be slow.** The Hostaway API can take 15-20 seconds per request. For large portfolios with many reservations, the first query in a conversation may take 30-60 seconds. Subsequent queries in the same session are faster once data is fetched.
+- **First request is slow.** Hostaway's API takes 15–20 seconds per call. The first query in a session may take 30–60 seconds while the server fetches your full unit list. After that, it's cached and subsequent queries are much faster.
 
-- **Revenue figures are gross.** The amounts come directly from Hostaway's `totalPrice` field — this is the gross booking amount before any channel commissions or fees are deducted.
+- **Large portfolios (500+ units) take longer.** Aggregating across hundreds of units requires multiple paginated API calls. Scope your question to a specific unit when you can — it's dramatically faster.
 
-- **Cancelled reservations are excluded** from all revenue calculations by default. The `list_reservations` tool lets you view cancelled bookings if needed.
+- **Wide date ranges take longer.** Asking "RevPAR for the last year" pulls a year of reservations from Hostaway. Stick to month-level or quarterly questions for snappy responses.
 
-- **Default date range is the current month.** If you don't specify dates, tools default to the 1st of the current month through today.
+- **Revenue is gross, not net.** All revenue figures come from Hostaway's `totalPrice` field — before channel commissions, cleaning fees, or other deductions.
 
-- **Rate limiting is handled automatically.** The server throttles requests to stay within Hostaway's API limits (15 requests per 10 seconds). You don't need to worry about hitting rate limits.
+- **Cancelled reservations are excluded** from revenue calculations by default. You can view them via the reservations tool if needed.
+
+- **Multi-room listings can show >100% occupancy.** If a single Hostaway listing represents a property with multiple bookable rooms, the tool flags this and explains why the math looks unusual.
+
+- **Historical depth depends on Hostaway.** The tool can only show data Hostaway returns. If your account is new, historical data may be limited.
 
 ---
 
 ## Troubleshooting
 
-### "Failed to authenticate with HostAway"
+**"Failed to authenticate with Hostaway"**
 - Double-check your Account ID and Client Secret in the config
-- Make sure you're using the Account ID as the Client ID (they're the same value)
-- Verify your API credentials are active in the Hostaway dashboard
+- The Account ID is also used as the Client ID — they're the same value
+- Verify your API credentials are still active in the Hostaway dashboard
 
-### Tools don't appear in Claude Desktop
-- Make sure you restarted Claude Desktop completely (quit the app, not just close the window)
-- Check the path in `args` points to the correct `src/index.js` file
-- Open the Claude Desktop logs to see if there's a startup error
+**Tools don't appear in Claude Desktop**
+- Make sure you fully quit Claude Desktop (not just closed the window) and reopened it
+- Check the JSON in your config file is valid (no missing commas or quotes)
+- Confirm Node.js is installed: run `node --version` in your terminal — it should print v18 or higher
 
-### "No reservations found"
-- Check that the date range you're asking about has actual bookings in Hostaway
-- Try a broader date range (e.g., "last 3 months" instead of "this week")
-- The tool filters by arrival date — a guest who arrived before your date range but stays into it will still be counted in revenue calculations
+**Responses time out or feel stuck**
+- Narrow your date range (a week instead of a year)
+- Ask about a specific unit instead of the whole portfolio
+- For accounts with 500+ units, add the `NODE_OPTIONS` line from Step 3
 
-### Responses are very slow
-- This is usually the Hostaway API, not the MCP server. Large portfolios with hundreds of reservations require multiple paginated API calls.
-- Try narrowing your date range or asking about a specific unit instead of the whole portfolio.
+**"Listing not found"**
+- The unit name must match exactly. Use the internal Hostaway naming (e.g. `AT_VIE_Duschel_01_00_01_W`), not the user-facing name shown in your dashboard
+- The tool will suggest similar names if it can't find an exact match
 
 ---
 
-## What this tool can't do (yet)
+## Want more?
 
-This free tool gives you real-time revenue metrics from your Hostaway data. For more advanced analytics, [RAAS by Arbio](https://www.arbio.io) offers:
-
-- **Year-over-year comparisons** with deep historical data
-- **Daily automated reports** delivered to your inbox
-- **Market benchmarking** against comparable properties
-- **Pricing optimization** recommendations
-- **Multi-PMS aggregation** across Hostaway, Smoobu, Apaleo, and more
-- **Custom KPIs** built with your revenue manager
-
-Want the full picture? [Talk to the Arbio team](https://www.arbio.io).
+This free tool gives you on-demand revenue metrics from your Hostaway data. For deeper analytics — year-over-year comparisons, automated daily reports, market benchmarking, pricing recommendations, and multi-PMS support — see [RAAS by Arbio](https://www.arbio.io).

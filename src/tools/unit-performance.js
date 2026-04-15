@@ -1,18 +1,19 @@
 import { z } from 'zod';
-import { getListings, getReservations } from '../pms/hostaway.js';
+import { getListings, getReservations, resolveListingId } from '../pms/hostaway.js';
 import { calculatePerUnitMetrics } from '../calculations/revenue-metrics.js';
-import { startOfMonth, today } from '../utils/date-helpers.js';
+import { startOfMonth, today, inclusiveEnd } from '../utils/date-helpers.js';
 
 export const name = 'get_unit_performance';
 
 export const config = {
   title: 'Unit Performance',
-  description: 'Get revenue metrics per unit, ranked by a chosen metric. Identifies top and bottom performers.',
+  description: 'Get revenue metrics per unit, ranked by a chosen metric. Identifies top and bottom performers. Pass listing_id to scope to a single unit (much faster).',
   inputSchema: {
     start_date: z.string().describe('Start date YYYY-MM-DD').optional(),
     end_date: z.string().describe('End date YYYY-MM-DD').optional(),
     sort_by: z.enum(['revpar', 'occupancy', 'revenue', 'adr']).default('revpar').describe('Metric to sort by'),
     limit: z.number().int().min(1).optional().describe('How many units to return (default: all)'),
+    listing_id: z.string().optional().describe('Optional: scope to a single unit. Accepts either a numeric Hostaway ID or a unit name (e.g. "AT_VIE_Duschel_01_00_01_W"). Strongly preferred when the user asks about a specific unit — avoids fetching all units.'),
   },
   annotations: { readOnlyHint: true },
 };
@@ -24,14 +25,24 @@ const sortKeys = {
   adr: 'adr',
 };
 
-export async function handler({ start_date, end_date, sort_by = 'revpar', limit }) {
+export async function handler({ start_date, end_date, sort_by = 'revpar', limit, listing_id }) {
   const sd = start_date || startOfMonth(new Date());
-  const ed = end_date || today();
+  const userEnd = end_date || today();
+  const ed = inclusiveEnd(userEnd);
 
-  const [listings, reservations] = await Promise.all([
+  // If user scoped to a single unit, resolve name→ID and fetch only that unit's data.
+  // This is dramatically faster than fetching all listings and all reservations.
+  const resolvedId = listing_id ? await resolveListingId(listing_id) : null;
+
+  const [allListings, reservations] = await Promise.all([
     getListings(),
-    getReservations(sd, ed),
+    getReservations(sd, userEnd, resolvedId),
   ]);
+
+  // When scoped, narrow the listings array to the requested unit before computing.
+  const listings = resolvedId
+    ? allListings.filter(l => l.id === resolvedId)
+    : allListings;
 
   let units = calculatePerUnitMetrics(reservations, listings, sd, ed);
 
@@ -60,7 +71,7 @@ export async function handler({ start_date, end_date, sort_by = 'revpar', limit 
   return {
     content: [{
       type: 'text',
-      text: JSON.stringify({ period: `${sd} to ${ed}`, sorted_by: sort_by, units: formatted }, null, 2),
+      text: JSON.stringify({ period: `${sd} to ${userEnd}`, sorted_by: sort_by, units: formatted }, null, 2),
     }],
   };
 }

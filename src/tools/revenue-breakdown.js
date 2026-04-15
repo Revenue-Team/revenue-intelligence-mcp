@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { getListings, getReservations } from '../pms/hostaway.js';
 import { calculateMetrics, calculatePerUnitMetrics } from '../calculations/revenue-metrics.js';
-import { overlapNights, startOfMonth, today, formatDate } from '../utils/date-helpers.js';
+import { overlapNights, startOfMonth, today, formatDate, inclusiveEnd } from '../utils/date-helpers.js';
 
 export const name = 'get_revenue_breakdown';
 
@@ -18,11 +18,12 @@ export const config = {
 
 export async function handler({ start_date, end_date, breakdown_by }) {
   const sd = start_date || startOfMonth(new Date());
-  const ed = end_date || today();
+  const userEnd = end_date || today();
+  const ed = inclusiveEnd(userEnd);
 
   const [listings, reservations] = await Promise.all([
     getListings(),
-    getReservations(sd, ed),
+    getReservations(sd, userEnd),
   ]);
 
   let data;
@@ -82,7 +83,7 @@ export async function handler({ start_date, end_date, breakdown_by }) {
     content: [{
       type: 'text',
       text: JSON.stringify({
-        period: `${sd} to ${ed}`,
+        period: `${sd} to ${userEnd}`,
         breakdown_by,
         data,
       }, null, 2),

@@ -13,8 +13,8 @@ All computed on the fly from your own Hostaway data.
 ## Quick start
 
 ```bash
-git clone https://github.com/Revenue-Team/MCP-lead-gen.git
-cd MCP-lead-gen
+git clone https://github.com/Revenue-Team/revenue-intelligence-mcp.git
+cd revenue-intelligence-mcp
 npm install
 ```
 
@@ -25,7 +25,7 @@ Then add to your Claude Desktop config (`~/Library/Application Support/Claude/cl
   "mcpServers": {
     "revenue-intelligence": {
       "command": "node",
-      "args": ["/full/path/to/MCP-lead-gen/src/index.js"],
+      "args": ["/full/path/to/revenue-intelligence-mcp/src/index.js"],
       "env": {
         "HOSTAWAY_CLIENT_ID": "YOUR_ACCOUNT_ID",
         "HOSTAWAY_CLIENT_SECRET": "YOUR_CLIENT_SECRET"
