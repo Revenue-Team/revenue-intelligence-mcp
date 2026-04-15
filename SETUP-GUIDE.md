@@ -231,6 +231,27 @@ For reservations that overlap your selected date range, revenue and nights are a
 
 ---
 
+## Updating
+
+To get the latest version:
+
+1. Open **Terminal** (macOS) or **PowerShell** (Windows)
+2. Paste this command, replacing the path with where you installed the project:
+
+   ```bash
+   cd /path/to/revenue-intelligence-mcp && git pull && npm install
+   ```
+
+3. Quit Claude Desktop completely (**Cmd+Q** on macOS) and reopen it.
+
+Your configuration file does not need to change — only the server code updates.
+
+> **Using Claude Code?** Open it inside the project folder and ask:
+> *"Pull the latest update for this project and run npm install."*
+> Then quit and reopen Claude Desktop.
+
+---
+
 ## Want more?
 
 This free tool gives you on-demand revenue metrics from your Hostaway data. For deeper analytics — year-over-year comparisons, automated daily reports, market benchmarking, pricing recommendations, and multi-PMS support — see [RAAS by Arbio](https://www.arbio.io).
